@@ -1,0 +1,66 @@
+// -------- Pins --------
+#define SOIL_PIN A0
+#define LDR_PIN A2
+#define RAIN_PIN A1
+#define RELAY_PIN 8
+
+int soilValue = 0;
+int ldrValue = 0;
+int rainValue = 0;
+
+void setup() {
+  Serial.begin(9600);
+
+  // ---- Initialize relay first ----
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, HIGH);  // Relay OFF initially (active LOW)
+
+  // ---- Initialize sensors ----
+  pinMode(SOIL_PIN, INPUT);
+  pinMode(LDR_PIN, INPUT);
+  pinMode(RAIN_PIN, INPUT);
+
+  // Seed random for temp/humidity
+  randomSeed(analogRead(A3));
+
+  Serial.println("Crop Suggestion System Initializing...");
+  delay(500);  // Short delay for Serial
+
+  float temperature = random(120, 250) / 10.0;  // 12–25 °C
+  float humidity = random(400, 700) / 10.0;     // 40–70 %
+
+  // ---- Read sensors ----
+  soilValue = analogRead(SOIL_PIN);
+  int soilPercent = map(soilValue, 0, 1023, 0, 100);
+
+  ldrValue = analogRead(LDR_PIN);
+  int sunlight = map(ldrValue, 0, 1023, 0, 1023);
+
+  rainValue = analogRead(RAIN_PIN);
+  int precipitation = map(rainValue, 0, 1023, 0, 10);
+
+  // ---- Send CSV once ----
+  Serial.print(temperature); Serial.print(",");
+  Serial.print(humidity); Serial.print(",");
+  Serial.print(soilPercent); Serial.print(",");
+  Serial.print(sunlight); Serial.print(",");
+  Serial.println(precipitation);
+
+  // ---- Wait 5 seconds for relay command from Python ----
+  unsigned long startTime = millis();
+  while (millis() - startTime < 5000) {
+    if (Serial.available() > 0) {
+      String cmd = Serial.readStringUntil('\n');
+      cmd.trim();
+      if (cmd == "ON") digitalWrite(RELAY_PIN, LOW);   // Active LOW → motor ON
+      else if (cmd == "OFF") digitalWrite(RELAY_PIN, HIGH); // motor OFF
+    }
+  }
+
+  // Ensure relay OFF after 5 seconds
+  digitalWrite(RELAY_PIN, HIGH);
+}
+
+void loop() {
+  // Do nothing — single output only
+}
